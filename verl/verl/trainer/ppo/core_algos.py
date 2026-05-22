@@ -2421,13 +2421,22 @@ def _compute_prl_current_token_boundary(
     ref_logprob: torch.FloatTensor,
     kl_estimator: str,
 ) -> torch.FloatTensor:
-    """Compute the j=i boundary term f(u_i) - f'(u_i)u_i from PRL Eq. (7)."""
+    """Compute the j=i boundary term f(u_i) - f'(u_i)u_i from PRL Eq. (7).
+
+    All estimators use u = pi_ref / pi_theta, so log u = ref_logprob - logprob and
+    -log u = logprob - ref_logprob.
+    """
     direction, estimator = _split_prl_kl_estimator(kl_estimator)
     estimator_base = estimator[:-1] if estimator.endswith("+") else estimator
 
     if direction == "reverse":
-        if estimator_base in ("kl", "k1", "low_var_kl", "k3"):
-            return kl_penalty(logprob=logprob, ref_logprob=ref_logprob, kl_penalty="k1")
+        reverse_log_u = kl_penalty(logprob=logprob, ref_logprob=ref_logprob, kl_penalty="k1")
+        if estimator_base in ("kl", "k1"):
+            # f(u) = -log u  =>  f(u) - f'(u) u = -log u + 1
+            return reverse_log_u + 1.0
+        if estimator_base in ("low_var_kl", "k3"):
+            # f(u) = -log u + u - 1  =>  f(u) - f'(u) u = -log u
+            return reverse_log_u
         raise NotImplementedError(f"Unsupported PRL KL estimator: {kl_estimator}")
 
     if direction != "forward":
@@ -2436,9 +2445,14 @@ def _compute_prl_current_token_boundary(
     if estimator_base in ("forward", "forward_kl", "forwardkl"):
         estimator_base = "k3"
 
-    if estimator_base in ("kl", "k1", "low_var_kl", "k3"):
-        log_ratio = torch.clamp(ref_logprob - logprob, min=-20, max=20)
-        return torch.clamp(-torch.exp(log_ratio), min=-10, max=10).contiguous()
+    log_u = torch.clamp(ref_logprob - logprob, min=-20, max=20)
+    u = torch.exp(log_u)
+    if estimator_base in ("kl", "k1"):
+        # f(u) = u log u  =>  f(u) - f'(u) u = -u
+        return torch.clamp(-u, min=-10, max=10).contiguous()
+    if estimator_base in ("low_var_kl", "k3"):
+        # f(u) = u log u - u + 1  =>  f(u) - f'(u) u = 1 - u
+        return torch.clamp(1.0 - u, min=-10, max=10).contiguous()
 
     raise NotImplementedError(f"Unsupported PRL KL estimator: {kl_estimator}")
 
