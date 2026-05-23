@@ -27,6 +27,7 @@ correct_reverseKL_is=False
 prm_eta=20          # beta = 1/eta; eta=1000 corresponds to beta=1e-3 (matches the prior kl_loss_coef=0.001 scale)
 prm_kl_estimator=${PRM_KL_ESTIMATOR:-reverse_k1}  # reverse_k1, reverse_k3, reverse_k3+, forward_k1, forward_k3, forward_k3+
 prm_k3_future_baseline=${PRM_K3_FUTURE_BASELINE:-True}
+prm_length_normalize=${PRM_LENGTH_NORMALIZE:-False}
 prm_clip_low=${PRM_CLIP_LOW:-inf}     # clip future-KL correction to [-clip_low, clip_high]; inf preserves old behavior
 prm_clip_high=${PRM_CLIP_HIGH:-inf}
 prm_adv=orm           # "orm" enables GRPO-style group normalization of the outcome reward before adding future-KL
@@ -46,7 +47,7 @@ ROLLOUT_N=${ROLLOUT_N:-5}
 VAL_N=${VAL_N:-16}
 OFFLOAD=${OFFLOAD:-True}
 
-experiment_name=${MODEL_NAME}-dapo_filter-${adv_estimator}-prmEta${prm_eta}-prmAdv_${prm_adv}-stepSplit_${prm_step_split}-prmKlEstimator_${prm_kl_estimator}-k3FutureBaseline_${prm_k3_future_baseline}-clipLow_${prm_clip_low}-clipHigh_${prm_clip_high}-lr${lr}
+experiment_name=${MODEL_NAME}-dapo_filter-${adv_estimator}-prmEta${prm_eta}-prmAdv_${prm_adv}-stepSplit_${prm_step_split}-prmKlEstimator_${prm_kl_estimator}-k3FutureBaseline_${prm_k3_future_baseline}-lengthNorm_${prm_length_normalize}-clipLow_${prm_clip_low}-clipHigh_${prm_clip_high}-lr${lr}
 CKPTS_DIR=${CKPTS_DIR:-"${DATA_ROOT}/ckpts/${project_name}/${experiment_name}"}
 
 python3 -m verl.trainer.main_ppo \
@@ -93,6 +94,7 @@ python3 -m verl.trainer.main_ppo \
     prm.eta=$prm_eta \
     prm.kl_estimator=$prm_kl_estimator \
     prm.k3_future_baseline=$prm_k3_future_baseline \
+    prm.length_normalize=$prm_length_normalize \
     prm.clip_low=$prm_clip_low \
     prm.clip_high=$prm_clip_high \
     prm.adv=$prm_adv \

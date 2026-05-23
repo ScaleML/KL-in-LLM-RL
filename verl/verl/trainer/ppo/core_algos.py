@@ -1450,6 +1450,7 @@ def compute_policy_loss_prl_current_kl(
 
     prl_kl_estimator = config.policy_loss.get("prl_kl_estimator", "reverse_k1")
     prl_k3_future_baseline = bool(config.policy_loss.get("prl_k3_future_baseline", False))
+    prl_length_normalize = bool(config.policy_loss.get("prl_length_normalize", False))
     future_kl = compute_prl_future_kl(
         logprob=log_prob,
         ref_logprob=ref_log_prob,
@@ -1457,6 +1458,7 @@ def compute_policy_loss_prl_current_kl(
         sample_logprob=old_log_prob,
         response_mask=response_mask,
         use_k3_future_baseline=prl_k3_future_baseline,
+        length_normalize=prl_length_normalize,
     )
     prl_correction = future_kl / eta
     prl_correction_clipped = torch.clamp(prl_correction, min=-prl_clip_low, max=prl_clip_high)
@@ -2464,6 +2466,7 @@ def compute_prl_future_kl(
     sample_logprob: torch.FloatTensor | None = None,
     response_mask: torch.Tensor | None = None,
     use_k3_future_baseline: bool = False,
+    length_normalize: bool = False,
 ) -> torch.FloatTensor:
     """Compute PRL future-KL as current-token boundary plus true future-token KL.
 
@@ -2471,7 +2474,9 @@ def compute_prl_future_kl(
     f(u_j) for future tokens j > i. This differs from a naive inclusive suffix
     sum when the selected estimator is k3. If enabled for k3 estimators, the
     future-token tail is centered by masked_mean(k3_token) times the number of
-    valid future tokens, while the current-token boundary is left unchanged.
+    valid future tokens, while the current-token boundary is left unchanged. If
+    length_normalize is enabled, the final correction is divided by the number
+    of valid response tokens from the current token through the end.
     """
     _, estimator = _split_prl_kl_estimator(kl_estimator)
     estimator_base = estimator[:-1] if estimator.endswith("+") else estimator
@@ -2502,6 +2507,14 @@ def compute_prl_future_kl(
         future_kl = future_kl - mean_future_token_kl * num_future_tokens
 
     future_kl = future_kl + current_token_boundary
+    if length_normalize:
+        if response_mask is None:
+            suffix_mask = torch.ones_like(future_kl)
+        else:
+            suffix_mask = response_mask.to(dtype=future_kl.dtype)
+        suffix_lengths = suffix_mask.sum(dim=-1, keepdim=True) - suffix_mask.cumsum(dim=-1) + suffix_mask
+        future_kl = future_kl / suffix_lengths.clamp_min(1.0)
+
     if response_mask is not None:
         future_kl = future_kl * response_mask
     return future_kl

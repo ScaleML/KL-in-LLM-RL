@@ -269,6 +269,7 @@ def apply_prm_reward_adjustment(
 
     kl_estimator = prm_config.get("kl_estimator", "reverse_k1")
     k3_future_baseline = bool(prm_config.get("k3_future_baseline", False))
+    length_normalize = bool(prm_config.get("length_normalize", False))
     future_kl = core_algos.compute_prl_future_kl(
         logprob=batch.batch["old_log_probs"],
         ref_logprob=batch.batch["ref_log_prob"],
@@ -276,6 +277,7 @@ def apply_prm_reward_adjustment(
         sample_logprob=batch.batch["old_log_probs"],
         response_mask=response_mask,
         use_k3_future_baseline=k3_future_baseline,
+        length_normalize=length_normalize,
     )
 
     reward_tensor = reward_tensor.sum(dim=-1, keepdim=True) * response_mask

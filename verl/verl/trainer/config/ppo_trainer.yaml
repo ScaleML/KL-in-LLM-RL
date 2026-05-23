@@ -123,6 +123,9 @@ prm:
   # When using a k3 PRM estimator, subtract masked_mean(k3_token) * num_future_tokens from the future tail.
   k3_future_baseline: false
 
+  # Divide future-KL by the number of valid response tokens from the current token to the end.
+  length_normalize: false
+
   # Clip the additive PRL correction future_kl / eta to [-clip_low, clip_high].
   # Infinity preserves the original unclipped behavior.
   clip_low: inf

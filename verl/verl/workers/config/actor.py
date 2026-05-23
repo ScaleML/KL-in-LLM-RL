@@ -90,6 +90,7 @@ class PolicyLossConfig(BaseConfig):
         prl_eta (float): Eta for PRL current-policy future-KL correction.
         prl_kl_estimator (str): KL estimator for PRL current-policy future-KL correction.
         prl_k3_future_baseline (bool): Whether to subtract a masked-mean k3 future-tail baseline in PRL.
+        prl_length_normalize (bool): Whether to divide PRL future-KL by the remaining response length.
         prl_clip_low (float): Negative-side clip magnitude for PRL correction.
         prl_clip_high (float): Positive-side clip magnitude for PRL correction.
         rollout_correction (RolloutCorrectionConfig): Configuration for rollout correction.
@@ -104,6 +105,7 @@ class PolicyLossConfig(BaseConfig):
     prl_eta: float = 0.0
     prl_kl_estimator: str = "reverse_k1"
     prl_k3_future_baseline: bool = False
+    prl_length_normalize: bool = False
     prl_clip_low: float = float("inf")
     prl_clip_high: float = float("inf")
     rollout_correction: RolloutCorrectionConfig = field(default_factory=RolloutCorrectionConfig)

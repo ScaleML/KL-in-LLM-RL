@@ -80,6 +80,8 @@ policy_loss:
   prl_kl_estimator: reverse_k1
   # When using a k3 PRL estimator, subtract masked_mean(k3_token) * num_future_tokens from the future tail.
   prl_k3_future_baseline: false
+  # Divide future-KL by the number of valid response tokens from the current token to the end.
+  prl_length_normalize: false
   prl_clip_low: inf
   prl_clip_high: inf
 

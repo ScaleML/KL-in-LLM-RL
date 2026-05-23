@@ -27,6 +27,7 @@ correct_reverseKL_is=False
 prm_eta=100          # beta = 1/eta; eta=1000 corresponds to beta=1e-3 (matches the prior kl_loss_coef=0.001 scale)
 prm_kl_estimator=${PRM_KL_ESTIMATOR:-"forward_k3"}  # reverse_k1, reverse_k3, reverse_k3+, forward_k1, forward_k3, forward_k3+
 prm_k3_future_baseline=${PRM_K3_FUTURE_BASELINE:-True}
+prm_length_normalize=${PRM_LENGTH_NORMALIZE:-False}
 prm_clip_low=${PRM_CLIP_LOW:-inf}     # clip future-KL correction to [-clip_low, clip_high]; inf preserves old behavior
 prm_clip_high=${PRM_CLIP_HIGH:-inf}
 policy_loss_mode=prl_current_kl
@@ -44,7 +45,7 @@ ROLLOUT_N=${ROLLOUT_N:-5}
 VAL_N=${VAL_N:-16}
 OFFLOAD=${OFFLOAD:-True}
 
-experiment_name=${MODEL_NAME}-dapo_filter-prlCurrentKL-eta${prm_eta}-prmKlEstimator_${prm_kl_estimator}_correctCurrentToken-k3FutureBaseline_${prm_k3_future_baseline}-clipLow_${prm_clip_low}-clipHigh_${prm_clip_high}
+experiment_name=${MODEL_NAME}-dapo_filter-prlCurrentKL-eta${prm_eta}-prmKlEstimator_${prm_kl_estimator}_correctCurrentToken-k3FutureBaseline_${prm_k3_future_baseline}-lengthNorm_${prm_length_normalize}-clipLow_${prm_clip_low}-clipHigh_${prm_clip_high}
 CKPTS_DIR=${CKPTS_DIR:-"${DATA_ROOT}/ckpts/${project_name}/${experiment_name}"}
 
 python3 -m verl.trainer.main_ppo \
@@ -90,12 +91,14 @@ python3 -m verl.trainer.main_ppo \
     algorithm.use_kl_in_reward=$use_kl_in_reward \
     prm.eta=$prm_eta \
     prm.kl_estimator=$prm_kl_estimator \
+    prm.length_normalize=$prm_length_normalize \
     prm.clip_low=$prm_clip_low \
     prm.clip_high=$prm_clip_high \
     actor_rollout_ref.actor.policy_loss.loss_mode=$policy_loss_mode \
     actor_rollout_ref.actor.policy_loss.prl_eta=$prm_eta \
     actor_rollout_ref.actor.policy_loss.prl_kl_estimator=$prm_kl_estimator \
     actor_rollout_ref.actor.policy_loss.prl_k3_future_baseline=$prm_k3_future_baseline \
+    actor_rollout_ref.actor.policy_loss.prl_length_normalize=$prm_length_normalize \
     actor_rollout_ref.actor.policy_loss.prl_clip_low=$prm_clip_low \
     actor_rollout_ref.actor.policy_loss.prl_clip_high=$prm_clip_high \
     critic.enable=False \
