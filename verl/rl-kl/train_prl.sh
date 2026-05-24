@@ -24,9 +24,9 @@ adv_estimator=prm
 use_kl_in_reward=False
 use_kl_loss=False
 correct_reverseKL_is=False
-prm_eta=20          # beta = 1/eta; eta=1000 corresponds to beta=1e-3 (matches the prior kl_loss_coef=0.001 scale)
+prm_eta=100          # beta = 1/eta
 prm_kl_estimator=${PRM_KL_ESTIMATOR:-reverse_k1}  # reverse_k1, reverse_k3, reverse_k3+, forward_k1, forward_k3, forward_k3+
-prm_k3_future_baseline=${PRM_K3_FUTURE_BASELINE:-True}
+prm_k3_future_baseline=${PRM_K3_FUTURE_BASELINE:-False}
 prm_length_normalize=${PRM_LENGTH_NORMALIZE:-False}
 prm_clip_low=${PRM_CLIP_LOW:-inf}     # clip future-KL correction to [-clip_low, clip_high]; inf preserves old behavior
 prm_clip_high=${PRM_CLIP_HIGH:-inf}
