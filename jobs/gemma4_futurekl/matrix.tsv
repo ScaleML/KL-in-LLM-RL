@@ -1,0 +1,10 @@
+run_id	profile	arm	beta	seed	validation
+gemma4-smoke-short-frpo	smoke-short	frpo	0.01	42	smoke_dev.parquet
+gemma4-smoke-long-frpo	smoke-long	frpo	0.01	42	smoke_dev.parquet
+gemma4-pilot-grpo-s42	pilot	grpo	0	42	dev.parquet
+gemma4-pilot-loss-kl-b1e-3-s42	pilot	loss-kl	0.001	42	dev.parquet
+gemma4-pilot-frpo-b1e-2-s42	pilot	frpo	0.01	42	dev.parquet
+gemma4-pilot-loss-kl-b1e-2-s42	pilot	loss-kl	0.01	42	dev.parquet
+gemma4-pilot-frpo-b1e-3-s42	pilot	frpo	0.001	42	dev.parquet
+gemma4-pilot-loss-kl-b1e-1-s42	pilot	loss-kl	0.1	42	dev.parquet
+gemma4-pilot-frpo-b1e-1-s42	pilot	frpo	0.1	42	dev.parquet

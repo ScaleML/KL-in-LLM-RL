@@ -1451,6 +1451,8 @@ def compute_policy_loss_prl_current_kl(
     prl_kl_estimator = config.policy_loss.get("prl_kl_estimator", "reverse_k1")
     prl_k3_future_baseline = bool(config.policy_loss.get("prl_k3_future_baseline", False))
     prl_length_normalize = bool(config.policy_loss.get("prl_length_normalize", False))
+    prl_future_window = int(config.policy_loss.get("prl_future_window", -1))
+    prl_kl_scope = str(config.policy_loss.get("prl_kl_scope", "future"))
     future_kl = compute_prl_future_kl(
         logprob=log_prob,
         ref_logprob=ref_log_prob,
@@ -1459,6 +1461,8 @@ def compute_policy_loss_prl_current_kl(
         response_mask=response_mask,
         use_k3_future_baseline=prl_k3_future_baseline,
         length_normalize=prl_length_normalize,
+        future_window=prl_future_window,
+        kl_scope=prl_kl_scope,
     )
     prl_correction = future_kl / eta
     prl_correction_clipped = torch.clamp(prl_correction, min=-prl_clip_low, max=prl_clip_high)
@@ -2459,6 +2463,29 @@ def _compute_prl_current_token_boundary(
     raise NotImplementedError(f"Unsupported PRL KL estimator: {kl_estimator}")
 
 
+def _prl_future_sum(x: torch.Tensor, future_window: int = -1) -> torch.Tensor:
+    """Sum of ``x`` over strictly-future positions j > t along the last dim.
+
+    ``future_window < 0`` sums to the end of the sequence (the original PRL future-KL);
+    ``future_window = W >= 0`` only sums the next ``W`` positions t+1..t+W (windowed future-KL).
+    ``x`` must already be zero outside the valid response so windows truncate at the response end.
+    """
+    csum = x.cumsum(dim=-1)
+    total = csum[..., -1:]
+    if future_window is None or int(future_window) < 0 or int(future_window) >= x.shape[-1]:
+        return total - csum
+    w = int(future_window)
+    if w == 0:
+        return torch.zeros_like(x)
+    shifted = torch.cat([csum[..., w:], total.expand(*total.shape[:-1], w)], dim=-1)  # C_{min(t+w, T-1)}
+    return shifted - csum
+
+
+def _prl_past_sum(x: torch.Tensor) -> torch.Tensor:
+    """Sum of ``x`` over strictly-past positions j < t along the last dim (x must be zero outside the response)."""
+    return x.cumsum(dim=-1) - x
+
+
 def compute_prl_future_kl(
     logprob: torch.FloatTensor,
     ref_logprob: torch.FloatTensor,
@@ -2467,8 +2494,17 @@ def compute_prl_future_kl(
     response_mask: torch.Tensor | None = None,
     use_k3_future_baseline: bool = False,
     length_normalize: bool = False,
+    future_window: int = -1,
+    kl_scope: str = "future",
 ) -> torch.FloatTensor:
     """Compute PRL future-KL as current-token boundary plus true future-token KL.
+
+    ``kl_scope="future"`` (default) sums the tokens after t (FRPO future-KL); ``kl_scope="full"`` additionally
+    adds all tokens before t, i.e. every token of a response receives the KL of the whole sequence
+    (current-token boundary + sum over all other tokens). ``future_window`` only applies to ``kl_scope="future"``.
+
+    ``future_window`` limits the future tail to the next ``future_window`` tokens (t+1..t+W);
+    a negative value keeps the full suffix. ``future_window=0`` keeps only the current-token boundary.
 
     For token i, PRL Eq. (7) uses f(u_i) - f'(u_i)u_i for the current token and
     f(u_j) for future tokens j > i. This differs from a naive inclusive suffix
@@ -2478,6 +2514,11 @@ def compute_prl_future_kl(
     length_normalize is enabled, the final correction is divided by the number
     of valid response tokens from the current token through the end.
     """
+    kl_scope = str(kl_scope).strip().lower()
+    if kl_scope not in ("future", "full"):
+        raise ValueError(f"Unsupported PRL kl_scope: {kl_scope!r} (expected 'future' or 'full').")
+    if kl_scope == "full" and future_window is not None and int(future_window) >= 0:
+        raise ValueError("future_window must be negative (unlimited) when kl_scope='full'.")
     _, estimator = _split_prl_kl_estimator(kl_estimator)
     estimator_base = estimator[:-1] if estimator.endswith("+") else estimator
     future_token_kl = compute_prl_kl_estimate(
@@ -2496,14 +2537,18 @@ def compute_prl_future_kl(
         future_token_kl = future_token_kl * response_mask
         current_token_boundary = current_token_boundary * response_mask
 
-    future_kl = future_token_kl.sum(dim=-1, keepdim=True) - future_token_kl.cumsum(dim=-1)
+    future_kl = _prl_future_sum(future_token_kl, future_window)
+    if kl_scope == "full":
+        future_kl = future_kl + _prl_past_sum(future_token_kl)
     if use_k3_future_baseline and estimator_base in ("low_var_kl", "k3"):
         if response_mask is None:
             future_token_mask = torch.ones_like(future_token_kl)
         else:
             future_token_mask = response_mask.to(dtype=future_token_kl.dtype)
         mean_future_token_kl = verl_F.masked_mean(future_token_kl, future_token_mask).detach()
-        num_future_tokens = future_token_mask.sum(dim=-1, keepdim=True) - future_token_mask.cumsum(dim=-1)
+        num_future_tokens = _prl_future_sum(future_token_mask, future_window)
+        if kl_scope == "full":
+            num_future_tokens = num_future_tokens + _prl_past_sum(future_token_mask)
         future_kl = future_kl - mean_future_token_kl * num_future_tokens
 
     future_kl = future_kl + current_token_boundary
@@ -2512,7 +2557,9 @@ def compute_prl_future_kl(
             suffix_mask = torch.ones_like(future_kl)
         else:
             suffix_mask = response_mask.to(dtype=future_kl.dtype)
-        suffix_lengths = suffix_mask.sum(dim=-1, keepdim=True) - suffix_mask.cumsum(dim=-1) + suffix_mask
+        suffix_lengths = _prl_future_sum(suffix_mask, future_window) + suffix_mask
+        if kl_scope == "full":
+            suffix_lengths = suffix_lengths + _prl_past_sum(suffix_mask)
         future_kl = future_kl / suffix_lengths.clamp_min(1.0)
 
     if response_mask is not None:

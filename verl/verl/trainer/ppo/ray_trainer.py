@@ -49,6 +49,7 @@ from verl.trainer.ppo.metric_utils import (
     compute_variance_proxy_metrics,
     process_validation_metrics,
 )
+from verl.trainer.ppo.prl_stats import compute_future_kl_stats
 from verl.trainer.ppo.reward import extract_reward
 from verl.trainer.ppo.utils import (
     Role,
@@ -278,6 +279,8 @@ def apply_prm_reward_adjustment(
         response_mask=response_mask,
         use_k3_future_baseline=k3_future_baseline,
         length_normalize=length_normalize,
+        future_window=int(prm_config.get("future_window", -1)),
+        kl_scope=str(prm_config.get("kl_scope", "future")),
     )
 
     reward_tensor = reward_tensor.sum(dim=-1, keepdim=True) * response_mask
@@ -818,7 +821,7 @@ class RayPPOTrainer:
                 for metric_name, metric_val in metric2val.items():
                     if (
                         (var_name == core_var)
-                        and any(metric_name.startswith(pfx) for pfx in ["mean", "maj", "best"])
+                        and any(metric_name.startswith(pfx) for pfx in ["mean", "maj", "best", "pass"])
                         and (f"@{n_max}" in metric_name)
                     ):
                         metric_sec = "val-core"
@@ -1666,6 +1669,12 @@ class RayPPOTrainer:
                         with marked_timer(str(Role.RefPolicy), timing_raw, color="olive"):
                             ref_log_prob = self._compute_ref_log_prob(batch)
                             batch = batch.union(ref_log_prob)
+
+                        # batch-level bias/variance/correlation statistics of windowed future-KL estimators
+                        prl_stats_config = self.config.get("prm", {})
+                        if bool(prl_stats_config.get("log_stats", True)) and "ref_log_prob" in batch.batch:
+                            with marked_timer("prl_stats", timing_raw, color="olive"):
+                                metrics.update(compute_future_kl_stats(batch=batch, prm_config=prl_stats_config))
 
                     # compute values
                     if self.use_critic:

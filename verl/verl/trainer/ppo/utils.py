@@ -83,11 +83,15 @@ def need_reference_policy(
     ) > 0
     policy_loss_config = config.actor_rollout_ref.actor.get("policy_loss", {})
     use_prl_current_kl_ref = policy_loss_config.get("loss_mode", "vanilla") == "prl_current_kl"
+    # prm.force_ref_policy=True keeps the reference policy in runs that have no KL term at all (e.g. a plain GRPO
+    # baseline) so that the prl_stats/* future-KL statistics are still measured against pi_ref.
+    force_ref_policy = bool(prm_config.get("force_ref_policy", False))
     return (
         config.algorithm.use_kl_in_reward
         or config.actor_rollout_ref.actor.use_kl_loss
         or use_prm_ref
         or use_prl_current_kl_ref
+        or force_ref_policy
     )
 
 

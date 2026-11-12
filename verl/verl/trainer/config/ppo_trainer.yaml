@@ -131,6 +131,21 @@ prm:
   clip_low: inf
   clip_high: inf
 
+  # Number of future tokens (t+1..t+W) summed in the future-KL. Negative = until the end of the response.
+  future_window: -1
+
+  # 'future' = sum over tokens after t (FRPO future-KL); 'full' = KL of the whole response (past + current + future).
+  kl_scope: future
+
+  # Log batch-level bias/variance/correlation statistics of windowed future-KL estimators
+  # (prl_stats/*) whenever a reference policy is available. See verl/trainer/ppo/prl_stats.py.
+  log_stats: true
+  # Keep the reference policy alive even when no KL term is used (use_kl_loss/use_kl_in_reward False, eta 0,
+  # vanilla loss) so that prl_stats/* can still be logged, e.g. for a no-KL GRPO baseline. Costs one ref forward.
+  force_ref_policy: false
+  stats_windows: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
+  stats_estimators: [k1]   # add k3 to also log the k3-estimator statistics (roughly doubles the ~1 s/step cost)
+
   # PRM advantage mode. "orm" keeps sparse step rewards and propagates them in the PRM estimator.
   adv: orm
 

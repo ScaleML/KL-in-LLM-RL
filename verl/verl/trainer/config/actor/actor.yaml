@@ -84,6 +84,10 @@ policy_loss:
   prl_length_normalize: false
   prl_clip_low: inf
   prl_clip_high: inf
+  # Number of future tokens (t+1..t+W) summed in the PRL future-KL. Negative = until the end of the response.
+  prl_future_window: -1
+  # 'future' = sum over tokens after t (FRPO future-KL); 'full' = KL of the whole response (past + current + future).
+  prl_kl_scope: future
 
 # Constant C in Dual-clip PPO; clips when advantage < 0 and ratio > C
 clip_ratio_c: 3.0

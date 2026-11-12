@@ -580,6 +580,8 @@ def process_validation_metrics(
 
         Where metric_name includes:
         - "mean@N": Mean value across N samples
+        - "pass@N": Fraction of prompts with at least one success among all N observed
+          responses, for acc/reward fields that are binary throughout the data source
         - "std@N": Standard deviation across N samples
         - "best@N/mean": Mean of the best values in bootstrap samples of size N
         - "best@N/std": Standard deviation of the best values in bootstrap samples
@@ -629,6 +631,11 @@ def process_validation_metrics(
     for data_source, uid2var2vals in data_src2uid2var2vals.items():
         # create uid dict
         uid_dict = data_src2uid2var2metric.setdefault(data_source, {})
+        binary_success_vars = {
+            name
+            for name in ("acc", "reward")
+            if all(name in vals and all(value in (0, 1) for value in vals[name]) for vals in uid2var2vals.values())
+        }
 
         for uid, var2vals in uid2var2vals.items():
             pred_vals = var2vals.get("pred")
@@ -643,6 +650,9 @@ def process_validation_metrics(
                 # compute mean and std
                 n_resps = len(var_vals)
                 metric = {f"mean@{n_resps}": float(np_mean(var_vals))}
+                if var_name in binary_success_vars:
+                    # Use every observed response once; bootstrap best@N resamples with replacement.
+                    metric[f"pass@{n_resps}"] = float(any(value == 1 for value in var_vals))
 
                 if n_resps > 1:
                     metric[f"std@{n_resps}"] = float(np_std(var_vals))

@@ -1,0 +1,53 @@
+{
+  "sources": {
+    "train": {
+      "path": "frpo_beta_sweep/20260924/dpao_filter_train_no_math500.parquet",
+      "sha256": "ba63b78e1331f1d7465909c7ac7928861e90013926fe2492e2c530a3bd6dbecb",
+      "rows": 12687
+    },
+    "math500": {
+      "path": "math500/test.parquet",
+      "sha256": "f76f2551a7143c93fde82cf353688664f32e4f66b846d44e047bf70542a443ca",
+      "rows": 500
+    },
+    "olympiadbench": {
+      "path": "olympiadbench/test.parquet",
+      "sha256": "c66c694dcda9fc7447a32c749c71db6bca0a7d65b79a6b3145b2d1f41d6bcf29",
+      "rows": 674
+    }
+  },
+  "outputs": {
+    "train": {
+      "filename": "train.parquet",
+      "rows": 12170,
+      "sha256": "00742f12767e77a69d2beb4d8c284741c903cc55b79b36b02d3300a798c44079"
+    },
+    "math500": {
+      "filename": "math500.parquet",
+      "rows": 500,
+      "sha256": "6c0a7eb8ba0ba5339aafeb828d5d11497c54cb3b62f4b193e87468babfc8529c"
+    },
+    "olympiadbench": {
+      "filename": "olympiadbench.parquet",
+      "rows": 674,
+      "sha256": "5a16790239213759273b73cc31534570c68b8b326d6d14d358b394d78801b513"
+    },
+    "dev": {
+      "filename": "dev.parquet",
+      "rows": 512,
+      "sha256": "aebd10c1f2ae4920b799b133054eeda30781ee1b8df1958b6ac99a842bbc7a9a"
+    },
+    "smoke_dev": {
+      "filename": "smoke_dev.parquet",
+      "rows": 32,
+      "sha256": "9d71e7e58e5cf2d83863d7d49568ffb16951d9cd53c81b9d4adba76c3b1935f5"
+    }
+  },
+  "dev_seed": 42,
+  "normalization": "Unicode NFC, whitespace and the shared boxed-answer instruction",
+  "overlapping_train_rows": {
+    "math500": 0,
+    "olympiadbench": 1
+  },
+  "removed_for_dev": 516
+}

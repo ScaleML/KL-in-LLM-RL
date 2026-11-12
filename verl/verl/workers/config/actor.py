@@ -93,6 +93,8 @@ class PolicyLossConfig(BaseConfig):
         prl_length_normalize (bool): Whether to divide PRL future-KL by the remaining response length.
         prl_clip_low (float): Negative-side clip magnitude for PRL correction.
         prl_clip_high (float): Positive-side clip magnitude for PRL correction.
+        prl_future_window (int): Number of future tokens summed in the PRL future-KL (<0 = to the end of the response).
+        prl_kl_scope (str): 'future' = tokens after t (FRPO future-KL); 'full' = whole-sequence KL (past + current + future).
         rollout_correction (RolloutCorrectionConfig): Configuration for rollout correction.
     """
 
@@ -108,6 +110,8 @@ class PolicyLossConfig(BaseConfig):
     prl_length_normalize: bool = False
     prl_clip_low: float = float("inf")
     prl_clip_high: float = float("inf")
+    prl_future_window: int = -1
+    prl_kl_scope: str = "future"
     rollout_correction: RolloutCorrectionConfig = field(default_factory=RolloutCorrectionConfig)
 
 

@@ -181,6 +181,8 @@ class RolloutConfig(BaseConfig):
     mode: str = "async"
     nnodes: int = 0
     n_gpus_per_node: int = 8
+    # Base rollout seed; each vLLM replica adds its rank.
+    seed: int = 0
 
     temperature: float = 1.0
     top_k: int = -1
